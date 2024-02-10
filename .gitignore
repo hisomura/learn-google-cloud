@@ -2,6 +2,7 @@
 node_modules/
 build/
 
-.terraform.lock.hcl
+build.zip
 terraform.tfstate
 terraform.tfstate.backup
+terraform.tfvars.json
