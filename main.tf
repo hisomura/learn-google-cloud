@@ -115,6 +115,11 @@ resource "google_compute_target_https_proxy" "default" {
   ssl_certificates = [google_compute_managed_ssl_certificate.default.id]
 }
 
+resource "google_compute_target_http_proxy" "default" {
+  name             = "http-proxy"
+  url_map          = google_compute_url_map.default.id
+}
+
 
 resource "google_compute_url_map" "default" {
   name = "url-map"
@@ -151,5 +156,15 @@ resource "google_compute_global_forwarding_rule" "default" {
   load_balancing_scheme = "EXTERNAL_MANAGED"
   port_range            = "443"
   target                = google_compute_target_https_proxy.default.id
+  ip_address            = google_compute_global_address.default.id
+}
+
+resource "google_compute_global_forwarding_rule" "http" {
+  name   = "website-global-forwarding-rule-http"
+
+  ip_protocol           = "TCP"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  port_range            = "80"
+  target                = google_compute_target_http_proxy.default.id
   ip_address            = google_compute_global_address.default.id
 }
