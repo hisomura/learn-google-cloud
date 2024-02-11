@@ -73,6 +73,9 @@ resource "google_cloudfunctions2_function" "default" {
     available_memory   = "256M"
     timeout_seconds    = 60
   }
+  lifecycle {
+    ignore_changes = [build_config["docker_repository"]]
+  }
 }
 
 resource "google_cloud_run_service_iam_member" "member" {
