@@ -10,6 +10,14 @@ variable "domain_name" {
   type = string
 }
 
+variable "default_region" {
+  type = string
+}
+
+variable "default_zone" {
+  type = string
+}
+
 terraform {
   required_providers {
     google = {
@@ -21,8 +29,8 @@ terraform {
 
 provider "google" {
   project = var.project_id
-  region  = "us-central1"
-  zone    = "us-central1-c"
+  region  = var.default_region
+  zone    = var.default_zone
 }
 
 
@@ -48,7 +56,7 @@ resource "google_storage_bucket_object" "object" {
 resource "google_compute_region_network_endpoint_group" "function_neg" {
   name                  = "function-neg"
   network_endpoint_type = "SERVERLESS"
-  region                = "us-central1"
+  region                = var.default_region
   cloud_function {
     function = google_cloudfunctions2_function.default.name
   }
@@ -56,7 +64,7 @@ resource "google_compute_region_network_endpoint_group" "function_neg" {
 
 resource "google_cloudfunctions2_function" "default" {
   name        = "function-v2"
-  location    = "us-central1"
+  location    = var.default_region
   description = "a new function"
   build_config {
     runtime     = "nodejs20"
@@ -95,7 +103,7 @@ resource "google_compute_network" "vpc_network" {
 
 resource "google_compute_address" "default" {
   name   = "my-test-static-ip-address"
-  region = "us-central1"
+  region = var.default_region
 }
 
 resource "google_compute_global_address" "default" {

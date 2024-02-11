@@ -6,3 +6,4 @@ build.zip
 terraform.tfstate
 terraform.tfstate.backup
 terraform.tfvars.json
+.terraform.tfstate.lock.info
