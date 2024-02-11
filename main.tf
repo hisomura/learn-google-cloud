@@ -45,6 +45,15 @@ resource "google_storage_bucket_object" "object" {
   source = data.archive_file.default.output_path # Add path to the zipped function source code
 }
 
+resource "google_compute_region_network_endpoint_group" "function_neg" {
+  name                  = "function-neg"
+  network_endpoint_type = "SERVERLESS"
+  region                = "us-central1"
+  cloud_function {
+    function = google_cloudfunctions2_function.default.name
+  }
+}
+
 resource "google_cloudfunctions2_function" "default" {
   name        = "function-v2"
   location    = "us-central1"
@@ -88,6 +97,10 @@ resource "google_compute_address" "default" {
   region = "us-central1"
 }
 
+resource "google_compute_global_address" "default" {
+  name   = "my-test-static-ip-address"
+}
+
 resource "google_compute_managed_ssl_certificate" "default" {
   name = var.project_name
 
@@ -105,10 +118,7 @@ resource "google_compute_target_https_proxy" "default" {
 
 resource "google_compute_url_map" "default" {
   name = "url-map"
-  default_url_redirect {
-    host_redirect = "google.com"
-    strip_query   = false
-  }
+  default_service = google_compute_backend_service.default.id
 }
 
 resource "google_dns_managed_zone" "production" {
@@ -120,6 +130,26 @@ resource "google_dns_record_set" "default" {
   name         = google_dns_managed_zone.production.dns_name
   managed_zone = google_dns_managed_zone.production.name
   type         = "A"
-  rrdatas      = [google_compute_address.default.address]
+  rrdatas      = [google_compute_global_address.default.address]
   ttl          = 300
+}
+
+resource "google_compute_backend_service" "default" {
+  name                            = "backend-service"
+  enable_cdn                      = true
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+
+  backend {
+    group = google_compute_region_network_endpoint_group.function_neg.id
+  }
+}
+
+resource "google_compute_global_forwarding_rule" "default" {
+  name   = "website-global-forwarding-rule"
+
+  ip_protocol           = "TCP"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  port_range            = "443"
+  target                = google_compute_target_https_proxy.default.id
+  ip_address            = google_compute_global_address.default.id
 }

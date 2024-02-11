@@ -7,3 +7,6 @@ https://registry.terraform.io/providers/hashicorp/archive/latest/docs/data-sourc
 
 https://cloud.google.com/compute/docs/ip-addresses/reserve-static-external-ip-address?hl=ja#terraform
 https://cloud.google.com/load-balancing/docs/ssl-certificates/google-managed-certs?hl=ja
+
+
+https://cloud.google.com/load-balancing/docs/backend-service?hl=ja
