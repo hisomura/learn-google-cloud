@@ -1,0 +1,18 @@
+{
+  "scripts": {
+    "compile": "tsc",
+    "start": "node node_modules/.bin/functions-framework --source=build/ --target=helloWorld",
+    "debug": "NODE_OPTIONS='--inspect' npm run start",
+    "watch": "concurrently \"npm run compile -- --watch\" \"nodemon --watch ./build/ --exec npm run debug\""
+  },
+  "devDependencies": {
+    "@google-cloud/functions-framework": "^3.3.0",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.17",
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.3",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+  }
+}
