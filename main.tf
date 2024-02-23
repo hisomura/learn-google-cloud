@@ -33,6 +33,18 @@ provider "google" {
   zone    = var.default_zone
 }
 
+resource "google_dns_managed_zone" "production" {
+  name     = replace(var.domain_name, ".", "-")
+  dns_name = "${var.domain_name}."
+}
+
+resource "google_dns_record_set" "default" {
+  name         = google_dns_managed_zone.production.dns_name
+  managed_zone = google_dns_managed_zone.production.name
+  type         = "A"
+  rrdatas      = [google_compute_global_address.default.address]
+  ttl          = 300
+}
 
 resource "google_storage_bucket" "default" {
   name                        = "${var.project_name}-gcf-source" # Every bucket name must be globally unique
@@ -48,7 +60,7 @@ data "archive_file" "default" {
 }
 
 resource "google_storage_bucket_object" "object" {
-  name   = "build.zip"
+  name   = "${data.archive_file.default.output_md5}.zip"
   bucket = google_storage_bucket.default.name
   source = data.archive_file.default.output_path # Add path to the zipped function source code
 }
@@ -132,19 +144,46 @@ resource "google_compute_target_http_proxy" "default" {
 resource "google_compute_url_map" "default" {
   name            = "url-map"
   default_service = google_compute_backend_service.default.id
-}
 
-resource "google_dns_managed_zone" "production" {
-  name     = replace(var.domain_name, ".", "-")
-  dns_name = "${var.domain_name}."
-}
+  host_rule {
+    hosts        = [var.domain_name]
+    path_matcher = "default"
+  }
 
-resource "google_dns_record_set" "default" {
-  name         = google_dns_managed_zone.production.dns_name
-  managed_zone = google_dns_managed_zone.production.name
-  type         = "A"
-  rrdatas      = [google_compute_global_address.default.address]
-  ttl          = 300
+  path_matcher {
+    name            = "default"
+    default_service = google_compute_backend_service.default.id
+
+    path_rule {
+      paths   = ["/home"]
+      service = google_compute_backend_service.default.id
+      route_action {
+        url_rewrite {
+          path_prefix_rewrite = "/home"
+        }
+      }
+    }
+
+    path_rule {
+      paths   = ["/login"]
+      service = google_compute_backend_service.default.id
+      route_action {
+        url_rewrite {
+          path_prefix_rewrite = "/hoge"
+        }
+      }
+    }
+
+    path_rule {
+      paths   = ["/otel"]
+      service = google_compute_backend_service.default.id
+      route_action {
+        url_rewrite {
+          path_prefix_rewrite = "/"
+        }
+      }
+    }
+  }
 }
 
 resource "google_compute_backend_service" "default" {
