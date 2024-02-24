@@ -46,10 +46,24 @@ resource "google_dns_record_set" "default" {
   ttl          = 300
 }
 
-resource "google_storage_bucket" "default" {
-  name                        = "${var.project_name}-gcf-source" # Every bucket name must be globally unique
+resource "google_storage_bucket" "build" {
+  name                        = "${var.project_name}-${replace(var.domain_name, ".", "-")}-source"
   location                    = "US"
   uniform_bucket_level_access = true
+}
+
+resource "google_storage_bucket" "static" {
+  name                        = "${var.project_name}-${replace(var.domain_name, ".", "-")}-static"
+  location                    = "US"
+  uniform_bucket_level_access = true
+  force_destroy = true
+}
+
+resource "google_storage_bucket_iam_member" "member" {
+  provider = google
+  bucket   = google_storage_bucket.static.name
+  role     = "roles/storage.objectViewer"
+  member   = "allUsers"
 }
 
 data "archive_file" "default" {
@@ -61,7 +75,7 @@ data "archive_file" "default" {
 
 resource "google_storage_bucket_object" "object" {
   name   = "${data.archive_file.default.output_md5}.zip"
-  bucket = google_storage_bucket.default.name
+  bucket = google_storage_bucket.build.name
   source = data.archive_file.default.output_path # Add path to the zipped function source code
 }
 
@@ -83,7 +97,7 @@ resource "google_cloudfunctions2_function" "default" {
     entry_point = "helloWorld" # Set the entry point
     source {
       storage_source {
-        bucket = google_storage_bucket.default.name
+        bucket = google_storage_bucket.build.name
         object = google_storage_bucket_object.object.name
       }
     }
@@ -175,12 +189,31 @@ resource "google_compute_url_map" "default" {
     }
 
     path_rule {
-      paths   = ["/otel"]
+      paths   = ["/otel", "/otel/*"]
       service = google_compute_backend_service.default.id
       route_action {
         url_rewrite {
           path_prefix_rewrite = "/"
         }
+      }
+    }
+
+    path_rule {
+      paths   = ["/static", "/static/*"]
+      service = google_compute_backend_bucket.static.id
+      route_action {
+        url_rewrite {
+          path_prefix_rewrite = "/"
+        }
+      }
+    }
+
+    path_rule {
+      paths = ["/twitter", "/twitter/*"]
+      url_redirect {
+        host_redirect   = "twitter.com"
+        prefix_redirect = "/"
+        strip_query     = false
       }
     }
   }
@@ -193,6 +226,12 @@ resource "google_compute_backend_service" "default" {
   backend {
     group = google_compute_region_network_endpoint_group.function_neg.id
   }
+}
+
+resource "google_compute_backend_bucket" "static" {
+  name        = "static-asset-backend-bucket"
+  bucket_name = google_storage_bucket.static.name
+  enable_cdn  = true
 }
 
 resource "google_compute_global_forwarding_rule" "default" {
